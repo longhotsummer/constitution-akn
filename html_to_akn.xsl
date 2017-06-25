@@ -16,7 +16,7 @@
 
   <xsl:template match="html:table">
     <table>
-      <xsl:apply-templates select="@id | //html:tr" />
+      <xsl:apply-templates select="@id | .//html:tr" />
     </table>
   </xsl:template>
 
@@ -58,6 +58,14 @@
 
   <xsl:template match="html:br">
     <eol/>
+  </xsl:template>
+
+  <xsl:template match="html:blockquote">
+    <p>
+      <remark status="editorial">
+        <xsl:apply-templates select=".//text()" />
+      </remark>
+    </p>
   </xsl:template>
 
   <!-- attributes -->

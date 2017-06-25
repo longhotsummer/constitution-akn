@@ -89,13 +89,14 @@ class Transformer(object):
         self.maker = objectify.ElementMaker(annotate=False, namespace=self.act.namespace, nsmap=self.act.act.nsmap)
         root = self.xpath(html, "//h:div[@id='wrapper']")[0]
 
-        name = fname.split('.')[0]
+        name = fname.split('/')[-1].split('.')[0]
         schedule = 'schedule' in fname
         self.main(root, name, schedule)
 
     def main(self, root, name, is_schedule=False):
         context = None
         parent = None
+        part = None
 
         for elem in root.iterchildren():
             tagname = tag(elem)
@@ -108,7 +109,13 @@ class Transformer(object):
                 if is_schedule:
                     # schedule
                     schedule = self.act.new_component(name=name)
-                    context = schedule.mainBody
+                    schedule.title = elem.text
+
+                    article = schedule._make('article')
+                    schedule.mainBody.append(article)
+                    article.set('id', name)
+
+                    context = article
                 elif not num:
                     # assume preamble
                     try:
@@ -131,22 +138,50 @@ class Transformer(object):
 
                 parent = context
 
-            elif tagname == 'h2' or tagname == 'h3':
+            elif tagname in ['h2', 'h3']:
                 num = self.num_re.match(elem.text)
-                if not num:
+                if not num and elem.text.startswith('Part '):
+                    # parts
+                    # TODO: detect in other languages
+                    part = self.maker.part()
+                    if ':' in elem.text:
+                        num = elem.text[5:].split(':', 1)[0]
+                        heading = elem.text.split(':', 1)[1]
+                    else:
+                        num = elem.text[5:]
+                        heading = None
+
+                    part.append(self.maker.num(num))
+                    part.set('id', 'part-%s' % num)
+                    if heading:
+                        part.append(self.maker.heading(heading))
+                    parent.append(part)
+                    context = part
+
+                elif not num:
                     context.append(self.maker.p(elem.text))
+
                 else:
                     # section
                     section = self.maker.section()
                     section.append(self.maker.num(num.groups()[1]))
                     section.append(self.maker.heading(num.groups()[3]))
                     section.set('id', 'section-%s' % num.groups()[2])
-                    parent.append(section)
+
+                    p = part if part is not None else parent
+                    p.append(section)
                     context = section
 
             else:
+                id = context.get('id')
+
+                # check for a decent container?
+                if name == 'schedule-1a' and context.tag.split('}')[-1] != 'content':
+                    context.append(self.maker.content())
+                    context = context.content
+
                 # tail and node text?
-                self.process(context, [elem], 0, context.get('id') or '')
+                self.process(context, [elem], 0, id)
 
     def xpath(self, node, xp):
         return node.xpath(xp, namespaces={'h': self.ns})
@@ -202,14 +237,14 @@ class Transformer(object):
 
                 self.process(item, elem.iterchildren(), level + 1, temp_id)
 
-            elif tagname == 'blockquote':
-                remark = self.gather_text('remark', elem.p)
-                remark.set('status', 'editorial')
-                p = self.maker.p()
-                p.append(remark)
-                context.append(p)
+            elif tagname in ['p', 'div', 'table', 'ul', 'blockquote']:
+                if context.tag.split('}')[1] not in ['content', 'preamble', 'item']:
+                    para = self.maker.paragraph()
+                    para.set('id', context.get('id') + ".paragraph0")
+                    para.append(self.maker.content())
+                    context.append(para)
+                    context = para.content
 
-            elif tagname in ['p', 'div', 'table', 'ul']:
                 # let the xsl handle this
                 context.append(elem)
 
@@ -234,9 +269,15 @@ def make_html(act, fname):
    max-width: 750px;
 }
 
+.akoma-ntoso .akn-article,
+.akoma-ntoso .akn-chapter,
 .akoma-ntoso .akn-section,
-.akoma-ntoso .akn-subsection {
+.akoma-ntoso .akn-subsection,
+.akoma-ntoso .akn-paragraph,
+.akoma-ntoso .akn-item,
+.akoma-ntoso .akn-content > .akn-p {
   position: relative;
+  display: block;
 }
 
 .akoma-ntoso .akn-remark {
