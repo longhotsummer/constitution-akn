@@ -346,8 +346,8 @@ if __name__ == '__main__':
         tr = Transformer()
         tr.transform_all(parts, language=lang['long_code'], title=lang['book-title'])
 
-        fname = 'gh-pages/%s.xml' % code
+        fname = 'docs/%s.xml' % code
         with open(fname, 'w') as f:
             f.write(tr.act.to_xml())
 
-        make_html(tr.act, 'gh-pages/%s.html' % code)
+        make_html(tr.act, 'docs/%s.html' % code)
