@@ -4,9 +4,12 @@ import lxml.etree as ET
 from lxml.html import html5parser
 from lxml import objectify
 import re
+import datetime
 
 import roman
 import cobalt
+import pycountry
+import yaml
 
 
 def tag(elem):
@@ -38,7 +41,7 @@ class Transformer(object):
     def __init__(self):
         self.xslt = ET.XSLT(ET.parse('html_to_akn.xsl'))
 
-    def transform_all(self, fnames):
+    def transform_all(self, fnames, language, title):
         self.act = cobalt.Act()
         for node in self.act.body.iterchildren():
             self.act.body.remove(node)
@@ -51,6 +54,26 @@ class Transformer(object):
         xml = self.act.to_xml()
         xml = ET.tostring(self.xslt(ET.fromstring(xml)), pretty_print=True)
         self.act = cobalt.Act(xml)
+
+        # frbr_uri
+        self.act.frbr_uri = "/za/act/1996/constitution"
+
+        # metadata
+        self.act.work_date = "1996-12-04"
+        now = datetime.datetime.now()
+        self.act.expression_date = now.strftime("%Y-%m-%d")
+        self.act.manifestation_date = now.strftime("%Y-%m-%d")
+        self.act.language = language
+        self.act.title = title
+
+        self.act.meta.identification.FRBRExpression.FRBRauthor.set('href', '#myconstitution')
+        ref = self.act._make('TLCOrganization')
+        ref.set('id', 'myconstitution')
+        ref.set('href', 'http://myconstitution.co.za/')
+        ref.set('showAs', 'MyConstitution.co.za')
+        self.act.meta.references.insert(0, ref)
+
+        self.act.meta.identification.FRBRManifestation.FRBRauthor.set('href', '#cobalt')
 
     def transform(self, fname):
         # sanitize into proper XML
@@ -185,16 +208,36 @@ class Transformer(object):
                 raise ValueError("Unhandled tag: %s" % tagname)
 
 
+def load_languages():
+    config = yaml.load(open("constitution/_config.yml", "r"))
+
+    languages = {
+        x['values']['language']: x['values'] for x in config['defaults'] if len(x.get('scope', {}).get('path')) >= 2
+    }
+
+    for code in languages.iterkeys():
+        if len(code) == 3:
+            languages[code]['long_code'] = code
+        else:
+            languages[code]['long_code'] = pycountry.languages.get(alpha_2=code).alpha_3
+
+    return languages
+
+
 if __name__ == '__main__':
-    for lang in ['en']:
-        print("Doing %s" % lang)
+    langs = load_languages()
+
+    for code, lang in langs.iteritems():
+        if code not in ['en', 'xh']:
+            continue
+        print("Doing %s" % code)
 
         parts = ['0-5-preamble.html'] + ['%02d.html' % i for i in range(1, 14)]
-        parts = ['constitution/_site/%s/%s' % (lang, p) for p in parts]
+        parts = ['constitution/_site/%s/%s' % (code, p) for p in parts]
         # TODO schedules
 
         tr = Transformer()
-        tr.transform_all(parts)
+        tr.transform_all(parts, language=lang['long_code'], title=lang['book-title'])
 
-        with open('%s.xml' % lang, 'w') as f:
+        with open('%s.xml' % code, 'w') as f:
             f.write(tr.act.to_xml())

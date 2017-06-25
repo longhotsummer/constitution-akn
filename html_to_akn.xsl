@@ -76,7 +76,8 @@
 
   <xsl:template match="*">
     <xsl:copy>
-      <xsl:apply-templates select="@* | node()"/>
+      <xsl:copy-of select="@*" />
+      <xsl:apply-templates select="node()" />
     </xsl:copy>
   </xsl:template>
 
