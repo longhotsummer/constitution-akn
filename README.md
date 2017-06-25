@@ -8,12 +8,14 @@ This project generates [Akoma Ntoso](http://www.akomantoso.org/) markup versions
 2. Create a virtualenv: ``virtualenv --no-site-packages env``
 3. Activate it: ``source env/bin/activate``
 4. Install dependencies: ``pip install -r requirements.txt``
-5. Setup the constitution submodule
+5. Setup the constitution submodule:
 
+    ```bash
     pushd constitution
     bundle install
     jekyll build
     popd
+    ```
 
 5. Generate XML and HTML: ``python transform.py``
 
