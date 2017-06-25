@@ -6,8 +6,10 @@ from lxml import objectify
 import re
 import datetime
 
+
 import roman
 import cobalt
+import cobalt.render
 import pycountry
 import yaml
 
@@ -208,6 +210,57 @@ class Transformer(object):
                 raise ValueError("Unhandled tag: %s" % tagname)
 
 
+def make_html(act, fname):
+    renderer = cobalt.render.HTMLRenderer(act)
+    html = """
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="http://indigo-web.openup.org.za/dist/0.1.2/css/akoma-ntoso.min.css">
+    <style>
+
+.akoma-ntoso {
+   max-width: 750px;
+}
+
+.akoma-ntoso .akn-section,
+.akoma-ntoso .akn-subsection {
+  position: relative;
+}
+
+.akoma-ntoso .akn-remark {
+  font-style: italic;
+  position: absolute;
+  left: 110%;
+  margin: 0px;
+  padding: 0px;
+  display: block;
+  width: 45%;
+  top: 0px;
+  background: #fff9df;
+  padding: 5px;
+  border: 3px solid white;
+  color: #777;
+}
+
+.akoma-ntoso .akn-remark:hover {
+  z-index: 5;
+  color: inherit;
+}
+    </style>
+  </head>
+  <body class="akoma-ntoso">
+  __BODY__
+  </body>
+</html>
+"""
+    html = html.replace('__BODY__', renderer.render_xml(act.to_xml()))
+
+    with open(fname, 'w') as f:
+        f.write(html)
+
+
 def load_languages():
     config = yaml.load(open("constitution/_config.yml", "r"))
 
@@ -239,5 +292,8 @@ if __name__ == '__main__':
         tr = Transformer()
         tr.transform_all(parts, language=lang['long_code'], title=lang['book-title'])
 
-        with open('%s.xml' % code, 'w') as f:
+        fname = '%s.xml' % code
+        with open(fname, 'w') as f:
             f.write(tr.act.to_xml())
+
+        make_html(tr.act, '%s.html' % code)
