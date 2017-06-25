@@ -140,15 +140,14 @@ class Transformer(object):
 
             elif tagname in ['h2', 'h3']:
                 num = self.num_re.match(elem.text)
-                if not num and elem.text.startswith('Part '):
+                if not num and elem.text.split(' ', 1)[0] in ['Part', 'Ingcenye', 'iCandelo', 'Deel', 'Ingxenye', 'Karolo', 'Incenye', u'Tshipiḓa', 'Xiphemu']:
                     # parts
-                    # TODO: detect in other languages
                     part = self.maker.part()
                     if ':' in elem.text:
-                        num = elem.text[5:].split(':', 1)[0]
+                        num = elem.text.split(':', 1)[0].split(' ')[-1]
                         heading = elem.text.split(':', 1)[1]
                     else:
-                        num = elem.text[5:]
+                        num = elem.text.split(' ')[-1]
                         heading = None
 
                     part.append(self.maker.num(num))
