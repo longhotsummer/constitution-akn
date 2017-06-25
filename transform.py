@@ -324,6 +324,8 @@ def load_languages():
         else:
             languages[code]['long_code'] = pycountry.languages.get(alpha_2=code).alpha_3
 
+        languages[code]['language'] = pycountry.languages.get(alpha_3=languages[code]['long_code']).name
+
     return languages
 
 
@@ -331,20 +333,21 @@ if __name__ == '__main__':
     langs = load_languages()
 
     for code, lang in langs.iteritems():
-        if code not in ['en', 'xh']:
-            continue
+        #if code not in ['en']:
+        #    continue
         print("Doing %s" % code)
 
         parts = ['0-5-preamble.html'] + ['%02d.html' % i for i in range(1, 14)]
         # TODO schedules
         parts = parts + ['schedule-%s.html' % x for x in '1 1a 2 3 4 5 6 6a 6b 7'.split()]
+        #parts = ['schedule-%s.html' % x for x in ['3']]
         parts = ['constitution/_site/%s/%s' % (code, p) for p in parts]
 
         tr = Transformer()
         tr.transform_all(parts, language=lang['long_code'], title=lang['book-title'])
 
-        fname = '%s.xml' % code
+        fname = 'gh-pages/%s.xml' % code
         with open(fname, 'w') as f:
             f.write(tr.act.to_xml())
 
-        make_html(tr.act, '%s.html' % code)
+        make_html(tr.act, 'gh-pages/%s.html' % code)
