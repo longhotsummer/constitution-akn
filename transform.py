@@ -88,10 +88,14 @@ class Transformer(object):
         self.nsmap = html.nsmap
         self.maker = objectify.ElementMaker(annotate=False, namespace=self.act.namespace, nsmap=self.act.act.nsmap)
         root = self.xpath(html, "//h:div[@id='wrapper']")[0]
-        self.main(root)
 
-    def main(self, root):
+        name = fname.split('.')[0]
+        schedule = 'schedule' in fname
+        self.main(root, name, schedule)
+
+    def main(self, root, name, is_schedule=False):
         context = None
+        parent = None
 
         for elem in root.iterchildren():
             tagname = tag(elem)
@@ -101,7 +105,11 @@ class Transformer(object):
             if tagname == 'h1':
                 num = self.num_re.match(elem.text)
 
-                if not num:
+                if is_schedule:
+                    # schedule
+                    schedule = self.act.new_component(name=name)
+                    context = schedule.mainBody
+                elif not num:
                     # assume preamble
                     try:
                         self.act.act.preamble
@@ -121,6 +129,8 @@ class Transformer(object):
                     self.act.body.append(chapter)
                     context = chapter
 
+                parent = context
+
             elif tagname == 'h2' or tagname == 'h3':
                 num = self.num_re.match(elem.text)
                 if not num:
@@ -131,12 +141,12 @@ class Transformer(object):
                     section.append(self.maker.num(num.groups()[1]))
                     section.append(self.maker.heading(num.groups()[3]))
                     section.set('id', 'section-%s' % num.groups()[2])
-                    chapter.append(section)
+                    parent.append(section)
                     context = section
 
             else:
                 # tail and node text?
-                self.process(context, [elem], 0, context.get('id'))
+                self.process(context, [elem], 0, context.get('id') or '')
 
     def xpath(self, node, xp):
         return node.xpath(xp, namespaces={'h': self.ns})
@@ -286,8 +296,9 @@ if __name__ == '__main__':
         print("Doing %s" % code)
 
         parts = ['0-5-preamble.html'] + ['%02d.html' % i for i in range(1, 14)]
-        parts = ['constitution/_site/%s/%s' % (code, p) for p in parts]
         # TODO schedules
+        parts = parts + ['schedule-%s.html' % x for x in '1 1a 2 3 4 5 6 6a 6b 7'.split()]
+        parts = ['constitution/_site/%s/%s' % (code, p) for p in parts]
 
         tr = Transformer()
         tr.transform_all(parts, language=lang['long_code'], title=lang['book-title'])
